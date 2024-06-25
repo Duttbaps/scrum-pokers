@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
+// eslint-disable-next-line
 import { collection, addDoc, query, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import QRCode from 'qrcode.react'; // Import QRCode component
 import { CopyToClipboard } from 'react-copy-to-clipboard'; // Import CopyToClipboard component
 
 const Estimate = ({ roomId }) => {
   const [estimate, setEstimate] = useState('');
+  // eslint-disable-next-line 
   const [estimates, setEstimates] = useState([]);
   const [error, setError] = useState('');
   const [roomDetails, setRoomDetails] = useState(null);
