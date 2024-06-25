@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-// eslint-disable-next-line
 import { collection, addDoc, query, onSnapshot, doc, getDoc } from 'firebase/firestore';
-import QRCode from 'qrcode.react'; // Import QRCode component
-import { CopyToClipboard } from 'react-copy-to-clipboard'; // Import CopyToClipboard component
+import QRCode from 'qrcode.react';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 
 const Estimate = ({ roomId }) => {
   const [estimate, setEstimate] = useState('');
-  // eslint-disable-next-line 
   const [estimates, setEstimates] = useState([]);
   const [error, setError] = useState('');
   const [roomDetails, setRoomDetails] = useState(null);
-  const [copied, setCopied] = useState(false); // State to track if room ID is copied
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fetchRoomDetails = async () => {
@@ -30,6 +28,19 @@ const Estimate = ({ roomId }) => {
     fetchRoomDetails();
   }, [roomId]);
 
+  useEffect(() => {
+    const q = query(collection(db, 'rooms', roomId, 'estimates'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const estimatesList = [];
+      querySnapshot.forEach((doc) => {
+        estimatesList.push(doc.data());
+      });
+      setEstimates(estimatesList);
+    });
+
+    return () => unsubscribe();
+  }, [roomId]);
+
   const handleEstimate = async () => {
     try {
       await addDoc(collection(db, 'rooms', roomId, 'estimates'), {
@@ -43,7 +54,7 @@ const Estimate = ({ roomId }) => {
 
   const handleCopyRoomId = () => {
     setCopied(true);
-    setTimeout(() => setCopied(false), 3000); // Reset copied state after 3 seconds
+    setTimeout(() => setCopied(false), 3000);
   };
 
   const renderPopup = () => {
@@ -57,7 +68,6 @@ const Estimate = ({ roomId }) => {
           <p className="mb-2"><strong>Room Name:</strong> {roomDetails.name}</p>
           <p className="mb-4"><strong>Room ID:</strong> {roomId}</p>
 
-          {/* Copy room ID functionality */}
           <div className="flex items-center mb-4">
             <CopyToClipboard text={roomId} onCopy={handleCopyRoomId}>
               <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2 focus:outline-none focus:shadow-outline">
@@ -67,7 +77,6 @@ const Estimate = ({ roomId }) => {
             {copied && <span className="text-green-500 ml-2">Copied!</span>}
           </div>
 
-          {/* QR Code */}
           <div className="mb-4">
             <QRCode value={roomId} size={128} />
           </div>
