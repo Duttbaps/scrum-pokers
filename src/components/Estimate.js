@@ -1,25 +1,29 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, addDoc, query, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import QRCode from 'qrcode.react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { differenceInDays, differenceInHours } from 'date-fns';
 
-const Estimate = ({ roomId }) => {
+const Estimate = ({ user }) => {
+  const { roomId } = useParams(); // Get the roomId from URL
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [estimates, setEstimates] = useState([]);
   const [error, setError] = useState('');
   const [roomDetails, setRoomDetails] = useState(null);
   const [copied, setCopied] = useState(false);
-  const [showEstimates, setShowEstimates] = useState(false);
+  
+  const [customURL, setCustomURL] = useState('');
+  const [showURLContainer, setShowURLContainer] = useState(true); // Show URL container by default
+  const [showEstimates, setShowEstimates] = useState(false); // State for estimates visibility
 
   useEffect(() => {
     const fetchRoomDetails = async () => {
       try {
         const docRef = doc(db, 'rooms', roomId);
         const docSnap = await getDoc(docRef);
-
         if (docSnap.exists()) {
           setRoomDetails(docSnap.data());
         }
@@ -29,6 +33,7 @@ const Estimate = ({ roomId }) => {
     };
 
     fetchRoomDetails();
+    setCustomURL(`${window.location.origin}/${roomId}`); // Generate the full room URL
   }, [roomId]);
 
   useEffect(() => {
@@ -55,14 +60,21 @@ const Estimate = ({ roomId }) => {
     const totalHours = days * 24 + hours;
 
     try {
+      // Get user details
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const { firstName, lastName } = userDoc.data();
+      const userName = `${firstName} ${lastName}`;
+
+      // Add estimate with user name
       await addDoc(collection(db, 'rooms', roomId, 'estimates'), {
         estimate: totalHours,
+        submittedBy: userName, // Include submitted by information
       });
       setStartDate(null);
       setEndDate(null);
       setError('');
     } catch (error) {
-      setError('Failed to submit estimate');
+      setError('Please Signin for Submitting Estimates');
     }
   };
 
@@ -96,8 +108,9 @@ const Estimate = ({ roomId }) => {
                 />
               </svg>
             </div>
-            <div className="back bg-white p-4 rounded-lg flex justify-center items-center">
+            <div className="back bg-white p-4 rounded-lg flex justify-center items-center flex-col">
               <span className="text-lg font-bold">{est.estimate} hours</span>
+              <span className="text-sm text-gray-500">Submitted by: {est.submittedBy}</span> {/* Show submitted by */}
             </div>
           </div>
         ))}
@@ -135,15 +148,17 @@ const Estimate = ({ roomId }) => {
         </div>
         <button
           onClick={handleEstimate}
-          className="bg-yellow-500 text-white p-2 w-full rounded focus:outline-none focus:shadow-outline mb-4"
+          className="button-23"
         >
           Submit Estimate
         </button>
         {error && <p className="text-red-500">{error}</p>}
+
+        {/* Button to toggle estimates */}
         <div className="flex justify-center mb-4">
           <button
             onClick={toggleShowEstimates}
-            className="bg-blue-500 text-white p-2 rounded focus:outline-none focus:shadow-outline"
+            className="button-23"
           >
             {showEstimates ? 'Hide Estimates' : 'Show Estimates'}
           </button>
@@ -151,33 +166,35 @@ const Estimate = ({ roomId }) => {
         {showEstimates && renderEstimatesCards()}
       </div>
 
-      {roomDetails && (
+      {/* URL Container */}
+      {showURLContainer && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
-          <div className="bg-white p-8 rounded-lg max-w-md w-full">
+          <div className="bg-white p-8 rounded-lg max-w-md w-full relative">
+            {/* Close button (X) */}
+            <button
+              onClick={() => setShowURLContainer(false)}
+              className="absolute top-2 right-2 text-red-500 text-lg"
+            >
+              &times;
+            </button>
             <h2 className="text-lg font-bold mb-4">Room Details</h2>
             <p className="mb-2">
-              <strong>Room Name:</strong> {roomDetails.name}
+              <strong>Room Name:</strong> {roomDetails?.name}
             </p>
             <p className="mb-4">
               <strong>Room ID:</strong> {roomId}
             </p>
             <div className="flex items-center mb-4">
-              <CopyToClipboard text={roomId} onCopy={handleCopyRoomId}>
-                <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2 focus:outline-none focus:shadow-outline">
-                  Copy Room ID
+              <CopyToClipboard text={customURL} onCopy={handleCopyRoomId}>
+                <button className="button-23">
+                  Copy Room URL
                 </button>
               </CopyToClipboard>
               {copied && <span className="text-green-500 ml-2">Copied!</span>}
             </div>
             <div className="mb-4">
-              <QRCode value={roomId} size={128} />
+              <QRCode value={customURL} size={128} />
             </div>
-            <button
-              onClick={() => setRoomDetails(null)}
-              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-            >
-              Close
-            </button>
           </div>
         </div>
       )}

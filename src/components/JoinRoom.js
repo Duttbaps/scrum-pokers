@@ -1,44 +1,27 @@
 import React, { useState } from 'react';
-import { db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
 
 const JoinRoom = ({ setRoomId }) => {
-  const [roomIdInput, setRoomIdInput] = useState('');
-  const [error, setError] = useState('');
+  const [joinRoomId, setJoinRoomId] = useState('');
 
-  const handleJoinRoom = async () => {
-    try {
-      const docRef = doc(db, 'rooms', roomIdInput);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        setRoomId(roomIdInput);
-        setError('');
-      } else {
-        setError('Incorrect Room ID');
-      }
-    } catch (error) {
-      console.error('Error checking room:', error);
-      setError('Error joining room. Please try again.');
+  const handleJoinRoom = () => {
+    if (joinRoomId) {
+      setRoomId(joinRoomId); // Set the room ID and navigate to that room
     }
   };
 
   return (
-    <div className="p-4">
+    <div>
+      <h2 className="text-xl font-bold">Join a Room</h2>
       <input
         type="text"
-        className="border p-2 mb-2 w-full"
-        placeholder="Room ID"
-        value={roomIdInput}
-        onChange={(e) => setRoomIdInput(e.target.value)}
+        placeholder="Enter room ID"
+        className="border rounded py-2 px-3 mb-2"
+        value={joinRoomId}
+        onChange={(e) => setJoinRoomId(e.target.value)}
       />
-      <button
-        onClick={handleJoinRoom}
-        className="bg-green-500 text-white p-2 w-full"
-      >
+      <button onClick={handleJoinRoom} className="button-23">
         Join Room
       </button>
-      {error && <p className="text-red-500 mt-2">{error}</p>}
     </div>
   );
 };
