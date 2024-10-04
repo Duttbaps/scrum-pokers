@@ -11,16 +11,16 @@ const JoinRoom = ({ setRoomId }) => {
 
   return (
     <div>
-      <h2 className="text-xl font-bold">Join a Room</h2>
+      <h2 className="text-xl font-bold">Join Session</h2>
       <input
         type="text"
-        placeholder="Enter room ID"
+        placeholder="Session ID"
         className="border rounded py-2 px-3 mb-2"
         value={joinRoomId}
         onChange={(e) => setJoinRoomId(e.target.value)}
       />
       <button onClick={handleJoinRoom} className="button-23">
-        Join Room
+        Join Session
       </button>
     </div>
   );

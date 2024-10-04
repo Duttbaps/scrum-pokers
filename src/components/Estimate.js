@@ -182,7 +182,7 @@ const Estimate = ({ user }) => {
               <strong>Room Name:</strong> {roomDetails?.name}
             </p>
             <p className="mb-4">
-              <strong>Room ID:</strong> {roomId}
+              <strong>Session ID:</strong> {roomId}
             </p>
             <div className="flex items-center mb-4">
               <CopyToClipboard text={customURL} onCopy={handleCopyRoomId}>
