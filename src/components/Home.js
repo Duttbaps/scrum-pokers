@@ -13,44 +13,51 @@ const Home = ({ setRoomId, setUserName }) => {
   };
 
   return (
+
     <div className="flex h-screen">
-      {/* Left Image */}
-      <div className="w-1/2">
-        <img src="your-image-url.jpg" alt="Room" className="w-full h-full object-cover" />
-      </div>
-
-      {/* Right Side */}
-      <div className="w-1/2 p-8">
-        {/* Navigation buttons */}
-        <div className="flex space-x-4 mb-6">
-          <button
-            className={`px-4 py-2 font-semibold ${activeTab === 'create' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-            onClick={() => setActiveTab('create')}
-          >
-            Create
-          </button>
-          <button
-            className={`px-4 py-2 font-semibold ${activeTab === 'join' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-            onClick={() => setActiveTab('join')}
-          >
-            Join
-          </button>
-        </div>
-
-        {/* Conditional Rendering based on activeTab */}
-        {activeTab === 'create' ? (
-          <>
-            <h1 className="text-2xl font-bold mb-4">Create New Session</h1>
-            <CreateRoom setRoomId={handleSetRoomId} setUserName={setUserName} />
-          </>
-        ) : (
-          <>
-            <h1 className="text-2xl font-bold mb-4">Join a Session</h1>
-            <JoinRoom setRoomId={handleSetRoomId} setUserName={setUserName} />
-          </>
-        )}
-      </div>
+    {/* Left Image */}
+    <div className="w-1/2 flex items-center justify-center">
+      <img
+        src="https://planning-poker-agile.web.app/static/media/background.1d8f31777a7b7a758461.jpg"
+        alt="Room"
+        className="w-auto max-h-[80vh] object-contain" // Adjust the max height as needed
+      />
     </div>
+  
+    {/* Right Side */}
+    <div className="w-1/2 p-8">
+      {/* Navigation buttons */}
+      <div className="flex space-x-4 mb-6">
+        <button
+          className={`px-4 py-2 font-semibold ${activeTab === 'create' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+          onClick={() => setActiveTab('create')}
+        >
+          Create
+        </button>
+        <button
+          className={`px-4 py-2 font-semibold ${activeTab === 'join' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+          onClick={() => setActiveTab('join')}
+        >
+          Join
+        </button>
+      </div>
+  
+      {/* Conditional Rendering based on activeTab */}
+      {activeTab === 'create' ? (
+        <>
+          <h1 className="sessionheading">Create New Session</h1>
+          <CreateRoom setRoomId={handleSetRoomId} setUserName={setUserName} />
+        </>
+      ) : (
+        <>
+          <h1 className="sessionheading">Join a Session</h1>
+          <JoinRoom setRoomId={handleSetRoomId} setUserName={setUserName} />
+        </>
+      )}
+    </div>
+  </div>
+  
+  
   );
 };
 

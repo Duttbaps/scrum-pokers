@@ -1,51 +1,55 @@
 import React, { useState } from 'react';
-import { db } from './firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
+import CreateRoom from './CreateRoom';
+import JoinRoom from './JoinRoom';
 
-const Home = ({ setRoomId }) => {
-  const [roomName, setRoomName] = useState('');
-  const [roomCreated, setRoomCreated] = useState(false);
-  const [createdRoomId, setCreatedRoomId] = useState('');
+const Home = ({ setRoomId, setUserName }) => {
+  const [activeTab, setActiveTab] = useState('create');
+  const navigate = useNavigate();
 
-  const handleCreateRoom = async () => {
-    try {
-      const docRef = await addDoc(collection(db, 'rooms'), {
-        name: roomName,
-        createdAt: serverTimestamp(),
-      });
-      setRoomId(docRef.id);
-      setCreatedRoomId(docRef.id);
-      setRoomCreated(true);
-    } catch (error) {
-      console.error('Error creating room:', error);
-    }
+  const handleSetRoomId = (id) => {
+    setRoomId(id);
+    navigate(`/${id}`); // Navigate to the created/joined room
   };
 
   return (
-    <div className="p-4">
-      {!roomCreated ? (
-        <>
-          <input
-            type="text"
-            className="border p-2 mb-2 w-full"
-            placeholder="Room Name"
-            value={roomName}
-            onChange={(e) => setRoomName(e.target.value)}
-          />
+    <div className="flex h-screen">
+      <div className="w-1/2 flex items-center justify-center">
+        <img
+          src="https://planning-poker-agile.web.app/static/media/background.1d8f31777a7b7a758461.jpg"
+          alt="Room"
+          className="w-auto max-h-[80vh] object-contain"
+        />
+      </div>
+
+      <div className="w-1/2 p-8">
+        <div className="flex space-x-4 mb-6">
           <button
-            onClick={handleCreateRoom}
-            className="bg-blue-500 text-white p-2 w-full"
+            className={`px-4 py-2 font-semibold ${activeTab === 'create' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            onClick={() => setActiveTab('create')}
           >
-            Create Room
+            Create
           </button>
-        </>
-      ) : (
-        <div className="p-4 bg-green-100 border border-green-500">
-          <p>Room created successfully!</p>
-          <p><strong>Room Name:</strong> {roomName}</p>
-          <p><strong>Room ID:</strong> {createdRoomId}</p>
+          <button
+            className={`px-4 py-2 font-semibold ${activeTab === 'join' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            onClick={() => setActiveTab('join')}
+          >
+            Join
+          </button>
         </div>
-      )}
+
+        {activeTab === 'create' ? (
+          <>
+            <h1 className="sessionheading">Create New Session</h1>
+            <CreateRoom setRoomId={handleSetRoomId} setUserName={setUserName} />
+          </>
+        ) : (
+          <>
+            <h1 className="sessionheading">Join a Session</h1>
+            <JoinRoom setRoomId={handleSetRoomId} setUserName={setUserName} />
+          </>
+        )}
+      </div>
     </div>
   );
 };

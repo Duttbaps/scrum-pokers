@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { db } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
@@ -24,31 +24,34 @@ const Login = ({ setUser }) => {
       await setDoc(userDoc, userData, { merge: true }); // Use merge to avoid overwriting existing data
 
       setUser(user);
-      navigate('/room'); // Navigate to room creation/join page
+
+      // Check if there's a room ID in local storage
+      const roomId = localStorage.getItem('roomId');
+      if (roomId) {
+        navigate(`/${roomId}`); // Navigate to the room if available
+        localStorage.removeItem('roomId'); // Clear the stored room ID
+      } else {
+        navigate('/room'); // Navigate to room creation/join page
+      }
     } catch (error) {
       console.error('Google Sign-In error:', error);
     }
   };
 
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="max-w-md w-full p-6 bg-white shadow-md rounded-lg">
-        <h2 className="text-2xl font-bold mb-4 text-center">Login / Signup</h2>
-        
-        {/* Flex column for vertical alignment */}
-        <div className="flex flex-col space-y-4"> {/* Space between buttons */}
-          <button 
-            onClick={handleGoogleSignIn} 
-            className="button-23 w-full"
-          >
-            Sign In with Google
-          </button>
+  useEffect(() => {
+    const roomId = new URLSearchParams(window.location.search).get('roomId');
+    if (roomId) {
+      localStorage.setItem('roomId', roomId);
+    }
+  }, []);
 
-          <button 
-            onClick={handleGoogleSignIn} 
-            className="button-23 w-full"
-          >
-            Sign Up with Google
+  return (
+    <div className="centered-container">
+      <div className="form-container">
+        <h2 className="mb-6 text-2xl text-gray-700">Login/Signup</h2>
+        <div className="flex flex-col space-y-4">
+          <button onClick={handleGoogleSignIn} className="button-23 w-full">
+            Sign In with Google
           </button>
         </div>
       </div>

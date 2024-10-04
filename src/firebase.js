@@ -17,4 +17,16 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-export { db, auth, googleProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile };
+// Add this function
+const signInWithGoogle = async () => {
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const user = result.user;
+        return user; // You can return user data for further use
+    } catch (error) {
+        console.error("Error signing in with Google:", error);
+        throw error; // Re-throw error for handling in the component
+    }
+};
+
+export { db, auth, googleProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signInWithGoogle }; // Export the new function

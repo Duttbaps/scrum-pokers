@@ -1,40 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, addDoc, query, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, query, onSnapshot, doc, getDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import QRCode from 'qrcode.react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { differenceInDays, differenceInHours } from 'date-fns';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faRedo, faTrash, faLink, faEye } from '@fortawesome/free-solid-svg-icons';
+import './Card.css';
 
 const Estimate = ({ user }) => {
-  const { roomId } = useParams(); // Get the roomId from URL
+  const { roomId } = useParams();
+  const navigate = useNavigate();
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [estimates, setEstimates] = useState([]);
   const [error, setError] = useState('');
   const [roomDetails, setRoomDetails] = useState(null);
   const [copied, setCopied] = useState(false);
-  
+  const [flipped, setFlipped] = useState([]);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
   const [customURL, setCustomURL] = useState('');
-  const [showURLContainer, setShowURLContainer] = useState(true); // Show URL container by default
-  const [showEstimates, setShowEstimates] = useState(false); // State for estimates visibility
+  const [showURLContainer, setShowURLContainer] = useState(true);
 
+  // Check if user is authenticated
   useEffect(() => {
-    const fetchRoomDetails = async () => {
-      try {
-        const docRef = doc(db, 'rooms', roomId);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setRoomDetails(docSnap.data());
-        }
-      } catch (error) {
-        console.error('Error fetching room details:', error);
-      }
-    };
+    if (!user) {
+      navigate(`/invite/${roomId}`); // Redirect to the invite page if not authenticated
+    } else {
+      setCustomURL(`${window.location.origin}/${roomId}`);
+      fetchRoomDetails();
+    }
+  }, [user, roomId, navigate]);
 
-    fetchRoomDetails();
-    setCustomURL(`${window.location.origin}/${roomId}`); // Generate the full room URL
-  }, [roomId]);
+  const fetchRoomDetails = async () => {
+    try {
+      const docRef = doc(db, 'rooms', roomId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setRoomDetails(docSnap.data());
+      }
+    } catch (error) {
+      console.error('Error fetching room details:', error);
+    }
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'rooms', roomId, 'estimates'));
@@ -44,6 +54,7 @@ const Estimate = ({ user }) => {
         estimatesList.push(doc.data());
       });
       setEstimates(estimatesList);
+      setFlipped(new Array(estimatesList.length).fill(false)); // Initialize flipped state
     });
 
     return () => unsubscribe();
@@ -60,57 +71,81 @@ const Estimate = ({ user }) => {
     const totalHours = days * 24 + hours;
 
     try {
-      // Get user details
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const { firstName, lastName } = userDoc.data();
       const userName = `${firstName} ${lastName}`;
 
-      // Add estimate with user name
       await addDoc(collection(db, 'rooms', roomId, 'estimates'), {
         estimate: totalHours,
-        submittedBy: userName, // Include submitted by information
+        submittedBy: userName,
       });
       setStartDate(null);
       setEndDate(null);
       setError('');
     } catch (error) {
-      setError('Please Signin for Submitting Estimates');
+      setError('Please Signup for Submitting Estimates');
     }
   };
 
   const handleCopyRoomId = () => {
     setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
+    setAlertMessage('Link copied successfully!');
+    setShowAlert(true);
+
+    setTimeout(() => {
+      setShowAlert(false);
+    }, 3000);
   };
 
-  const toggleShowEstimates = () => {
-    setShowEstimates(!showEstimates);
+  const handleFlip = () => {
+    setFlipped(flipped.map(() => true)); // Flip all cards
+  };
+
+  const handleRestart = async () => {
+    try {
+      const estimatesQuery = query(collection(db, 'rooms', roomId, 'estimates'));
+      const estimatesSnapshot = await getDocs(estimatesQuery);
+      const deletePromises = estimatesSnapshot.docs.map((estimateDoc) =>
+        deleteDoc(estimateDoc.ref)
+      );
+      await Promise.all(deletePromises);
+      console.log('All estimates have been deleted.');
+    } catch (error) {
+      console.error('Error deleting estimates:', error);
+    }
+  };
+
+  const handleDeleteRoom = async () => {
+    try {
+      const estimatesQuery = query(collection(db, 'rooms', roomId, 'estimates'));
+      const estimatesSnapshot = await getDocs(estimatesQuery);
+      const deleteEstimatePromises = estimatesSnapshot.docs.map((estimateDoc) =>
+        deleteDoc(estimateDoc.ref)
+      );
+      await Promise.all(deleteEstimatePromises);
+
+      await deleteDoc(doc(db, 'rooms', roomId));
+      console.log('Room and all estimates deleted.');
+      navigate('/'); // Redirect after deleting
+    } catch (error) {
+      console.error('Error deleting room:', error);
+    }
   };
 
   const renderEstimatesCards = () => {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+      <div className="cards-container grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
         {estimates.map((est, index) => (
-          <div key={index} className="card rounded-lg shadow-md border border-gray-200 relative">
-            <div className="front bg-blue-500 text-white p-4 rounded-lg flex justify-center items-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-12 w-12"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-            </div>
-            <div className="back bg-white p-4 rounded-lg flex justify-center items-center flex-col">
-              <span className="text-lg font-bold">{est.estimate} hours</span>
-              <span className="text-sm text-gray-500">Submitted by: {est.submittedBy}</span> {/* Show submitted by */}
+          <div key={index} className="flip-card">
+            <div className={`flip-card-inner ${flipped[index] ? 'is-flipped' : ''}`}>
+              <div className="flip-card-front">
+                <p className="title">FLIP CARD</p>
+                <p>Waiting to Reveal</p>
+              </div>
+              <div className="flip-card-back">
+                <p className="title">{est.estimate} hours</p>
+                <p>Submitted by: {est.submittedBy}</p>
+              </div>
             </div>
           </div>
         ))}
@@ -120,8 +155,40 @@ const Estimate = ({ user }) => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="max-w-3xl w-full p-6 bg-white shadow-md rounded-lg">
+
+      {/* Cards Container */}
+      <div className="cards-section max-w-5xl w-full p-6 bg-white shadow-md rounded-lg">
         <h2 className="text-2xl font-bold mb-4">Estimate Hours</h2>
+        {renderEstimatesCards()}
+      </div>
+
+      {/* Buttons Section */}
+      <div className="buttons-section max-w-5xl w-full p-6 bg-white shadow-md rounded-lg mt-6">
+        <div className="flex justify-center space-x-6">
+          <button onClick={handleFlip} className="flex flex-col items-center">
+            <FontAwesomeIcon icon={faEye} size="2x" className="text-blue-500" />
+            <span className="text-sm mt-2">Reveal</span>
+          </button>
+          <button onClick={handleRestart} className="flex flex-col items-center">
+            <FontAwesomeIcon icon={faRedo} size="2x" className="text-green-500" />
+            <span className="text-sm mt-2">Restart</span>
+          </button>
+          <button onClick={handleDeleteRoom} className="flex flex-col items-center">
+            <FontAwesomeIcon icon={faTrash} size="2x" className="text-red-500" />
+            <span className="text-sm mt-2">Delete Room</span>
+          </button>
+          <CopyToClipboard text={customURL} onCopy={handleCopyRoomId}>
+            <button className="flex flex-col items-center">
+              <FontAwesomeIcon icon={faLink} size="2x" className="text-yellow-500" />
+              <span className="text-sm mt-2">Invite Link</span>
+            </button>
+          </CopyToClipboard>
+        </div>
+      </div>
+
+      {/* Submit Estimate Section */}
+      <div className="submit-section max-w-5xl w-full p-6 bg-white shadow-md rounded-lg mt-6">
+        <h2 className="text-xl font-bold mb-4">Submit Your Estimate</h2>
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="start-date">
             Start Date
@@ -146,49 +213,28 @@ const Estimate = ({ user }) => {
             onChange={(e) => setEndDate(e.target.value)}
           />
         </div>
-        <button
-          onClick={handleEstimate}
-          className="button-23"
-        >
-          Submit Estimate
-        </button>
+        <button onClick={handleEstimate} className="button-23">Submit Estimate</button>
         {error && <p className="text-red-500">{error}</p>}
-
-        {/* Button to toggle estimates */}
-        <div className="flex justify-center mb-4">
-          <button
-            onClick={toggleShowEstimates}
-            className="button-23"
-          >
-            {showEstimates ? 'Hide Estimates' : 'Show Estimates'}
-          </button>
-        </div>
-        {showEstimates && renderEstimatesCards()}
       </div>
+
+      {/* Success Message for Copy */}
+      {showAlert && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-md">
+          {alertMessage}
+        </div>
+      )}
 
       {/* URL Container */}
       {showURLContainer && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
           <div className="bg-white p-8 rounded-lg max-w-md w-full relative">
-            {/* Close button (X) */}
-            <button
-              onClick={() => setShowURLContainer(false)}
-              className="absolute top-2 right-2 text-red-500 text-lg"
-            >
-              &times;
-            </button>
+            <button onClick={() => setShowURLContainer(false)} className="absolute top-2 right-2 text-red-500 text-lg">&times;</button>
             <h2 className="text-lg font-bold mb-4">Room Details</h2>
-            <p className="mb-2">
-              <strong>Room Name:</strong> {roomDetails?.name}
-            </p>
-            <p className="mb-4">
-              <strong>Session ID:</strong> {roomId}
-            </p>
+            <p className="mb-2"><strong>Room Name:</strong> {roomDetails?.name}</p>
+            <p className="mb-4"><strong>Session ID:</strong> {roomId}</p>
             <div className="flex items-center mb-4">
               <CopyToClipboard text={customURL} onCopy={handleCopyRoomId}>
-                <button className="button-23">
-                  Copy Room URL
-                </button>
+                <button className="button-23">Copy Room URL</button>
               </CopyToClipboard>
               {copied && <span className="text-green-500 ml-2">Copied!</span>}
             </div>
