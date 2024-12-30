@@ -8,6 +8,7 @@ import Invite from './components/Invite';
 function App() {
   const [user, setUser] = useState(null);
   const [userName, setUserName] = useState(''); // Track custom user name
+  // eslint-disable-next-line 
   const [roomId, setRoomId] = useState(null);
 
   return (

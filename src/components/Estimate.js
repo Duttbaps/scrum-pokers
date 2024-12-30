@@ -32,6 +32,7 @@ const Estimate = ({ user }) => {
       setCustomURL(`${window.location.origin}/${roomId}`);
       fetchRoomDetails();
     }
+    // eslint-disable-next-line 
   }, [user, roomId, navigate]);
 
   const fetchRoomDetails = async () => {
