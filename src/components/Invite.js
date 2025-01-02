@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { addDoc, collection } from 'firebase/firestore';
+import { db } from '../firebase'; // Adjust the path based on your project structure
+
 
 const Invite = ({ setUserName }) => {
   const { roomId } = useParams();
@@ -17,15 +20,30 @@ const Invite = ({ setUserName }) => {
     }
   }, [roomId, navigate, setUserName]);
 
-  const handleEnterRoom = () => {
+  const handleEnterRoom = async () => {
     if (displayName.trim()) {
-      setUserName(displayName); // Save the display name
-      localStorage.setItem('displayName', displayName); // Save to local storage
-      navigate(`/${roomId}`); // Redirect to the room
+      try {
+        // Save the display name to Firebase
+        await addDoc(collection(db, 'rooms', roomId, 'participants'), {
+          submittedBy: displayName,
+          joinedAt: new Date().toISOString(),
+        });
+  
+        // Save the display name locally
+        setUserName(displayName);
+        localStorage.setItem('displayName', displayName);
+  
+        // Navigate to the room and pass the displayName in state
+        navigate(`/${roomId}`, { state: { displayName } }); // Pass name here
+      } catch (err) {
+        setError('Failed to join the room. Please try again.');
+        console.error('Error adding document: ', err);
+      }
     } else {
       setError('Please enter your name to join the room.');
     }
   };
+  
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">

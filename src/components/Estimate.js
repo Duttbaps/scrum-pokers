@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate,useLocation} from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, addDoc, query, onSnapshot, doc, getDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import QRCode from 'qrcode.react';
@@ -7,6 +7,7 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { differenceInDays, differenceInHours } from 'date-fns';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRedo, faTrash, faLink, faEye } from '@fortawesome/free-solid-svg-icons';
+
 import './Card.css';
 
 const Estimate = ({ user }) => {
@@ -23,6 +24,8 @@ const Estimate = ({ user }) => {
   const [alertMessage, setAlertMessage] = useState('');
   const [customURL, setCustomURL] = useState('');
   const [showURLContainer, setShowURLContainer] = useState(true);
+  const { state } = useLocation(); // Access state passed from Invite
+  const userName = state?.displayName || localStorage.getItem('displayName') || 'Unknown User'; // Retrieve name here
 
   // Check if user is authenticated
   useEffect(() => {
@@ -66,27 +69,28 @@ const Estimate = ({ user }) => {
       setError('Please select both start and end dates');
       return;
     }
-
+  
     const days = differenceInDays(new Date(endDate), new Date(startDate));
     const hours = differenceInHours(new Date(endDate), new Date(startDate)) % 24;
     const totalHours = days * 24 + hours;
-
+  
     try {
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      const { firstName, lastName } = userDoc.data();
-      const userName = `${firstName} ${lastName}`;
-
       await addDoc(collection(db, 'rooms', roomId, 'estimates'), {
         estimate: totalHours,
         submittedBy: userName,
       });
+  
       setStartDate(null);
       setEndDate(null);
       setError('');
     } catch (error) {
-      setError('Please Signup for Submitting Estimates');
+      setError('An error occurred while submitting the estimate.');
+      console.error('Error submitting estimate:', error);
     }
   };
+  
+  
+  
 
   const handleCopyRoomId = () => {
     setCopied(true);
