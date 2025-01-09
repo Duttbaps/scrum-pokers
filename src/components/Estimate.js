@@ -74,10 +74,12 @@ const Estimate = ({ user }) => {
     const hours = differenceInHours(new Date(endDate), new Date(startDate)) % 24;
     const totalHours = days * 24 + hours;
   
+    const userNameToSubmit = user?.displayName || userName; // Fallback to userName from Invite.js if user.displayName is not available
+    
     try {
       await addDoc(collection(db, 'rooms', roomId, 'estimates'), {
         estimate: totalHours,
-        submittedBy: userName,
+        submittedBy: userNameToSubmit, // Use userNameToSubmit here
       });
   
       setStartDate(null);
