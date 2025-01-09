@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate,useLocation} from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, addDoc, query, onSnapshot, doc, getDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc, query, onSnapshot, doc, getDoc, deleteDoc, getDocs, setDoc } from 'firebase/firestore';
+
 import QRCode from 'qrcode.react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { differenceInDays, differenceInHours } from 'date-fns';
@@ -18,6 +19,8 @@ const Estimate = ({ user }) => {
   const [estimates, setEstimates] = useState([]);
   const [error, setError] = useState('');
   const [roomDetails, setRoomDetails] = useState(null);
+const [isOwner, setIsOwner] = useState(false); // Add this line
+
   const [copied, setCopied] = useState(false);
   const [flipped, setFlipped] = useState([]);
   const [showAlert, setShowAlert] = useState(false);
@@ -43,26 +46,52 @@ const Estimate = ({ user }) => {
       const docRef = doc(db, 'rooms', roomId);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setRoomDetails(docSnap.data());
+        const roomData = docSnap.data();
+        setRoomDetails(roomData);
+  
+        // Check if the current user is the owner
+        setIsOwner(roomData.ownerName === user?.displayName);
       }
     } catch (error) {
       console.error('Error fetching room details:', error);
     }
   };
-
+  
   useEffect(() => {
-    const q = query(collection(db, 'rooms', roomId, 'estimates'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const roomDocRef = doc(db, 'rooms', roomId);
+  
+    // Subscribe to the room document to listen for changes (like revealing cards)
+    const unsubscribeRoom = onSnapshot(roomDocRef, (docSnap) => {
+      const roomData = docSnap.data();
+      
+      // Update the flipped state based on the revealed flag from Firestore
+      if (roomData?.revealed) {
+        setFlipped(new Array(estimates.length).fill(true)); // Flip all cards for everyone
+      } else {
+        setFlipped(new Array(estimates.length).fill(false)); // Cards remain unflipped if not revealed
+      }
+    });
+  
+    const estimatesQuery = query(collection(db, 'rooms', roomId, 'estimates'));
+    const unsubscribeEstimates = onSnapshot(estimatesQuery, (querySnapshot) => {
       const estimatesList = [];
       querySnapshot.forEach((doc) => {
         estimatesList.push(doc.data());
       });
       setEstimates(estimatesList);
-      setFlipped(new Array(estimatesList.length).fill(false)); // Initialize flipped state
     });
-
-    return () => unsubscribe();
-  }, [roomId]);
+  
+    return () => {
+      unsubscribeRoom();
+      unsubscribeEstimates();
+    };
+  }, [roomId, estimates.length]);
+  
+  
+  
+  
+  
+  
 
   const handleEstimate = async () => {
     if (!startDate || !endDate) {
@@ -104,11 +133,31 @@ const Estimate = ({ user }) => {
     }, 3000);
   };
 
-  const handleFlip = () => {
-    setFlipped(flipped.map(() => true)); // Flip all cards
+  const handleFlip = async () => {
+    if (!isOwner) {
+      alert('Only the owner can reveal the cards.');
+      return;
+    }
+  
+    // Update the Firestore room document with revealed: true
+    try {
+      const roomDocRef = doc(db, 'rooms', roomId);
+      await setDoc(roomDocRef, { revealed: true }, { merge: true }); // Merge to avoid overwriting other fields
+      setFlipped(new Array(estimates.length).fill(true)); // Flip all cards locally
+    } catch (error) {
+      console.error('Error revealing cards:', error);
+    }
   };
-
+  
+  
+  
+  
   const handleRestart = async () => {
+    if (!isOwner) {
+      alert('Only the owner can restart the room.');
+      return;
+    }
+  
     try {
       const estimatesQuery = query(collection(db, 'rooms', roomId, 'estimates'));
       const estimatesSnapshot = await getDocs(estimatesQuery);
@@ -121,8 +170,13 @@ const Estimate = ({ user }) => {
       console.error('Error deleting estimates:', error);
     }
   };
-
+  
   const handleDeleteRoom = async () => {
+    if (!isOwner) {
+      alert('Only the owner can delete the room.');
+      return;
+    }
+  
     try {
       const estimatesQuery = query(collection(db, 'rooms', roomId, 'estimates'));
       const estimatesSnapshot = await getDocs(estimatesQuery);
@@ -130,7 +184,7 @@ const Estimate = ({ user }) => {
         deleteDoc(estimateDoc.ref)
       );
       await Promise.all(deleteEstimatePromises);
-
+  
       await deleteDoc(doc(db, 'rooms', roomId));
       console.log('Room and all estimates deleted.');
       navigate('/'); // Redirect after deleting
@@ -138,24 +192,25 @@ const Estimate = ({ user }) => {
       console.error('Error deleting room:', error);
     }
   };
-
+  
   const renderEstimatesCards = () => {
     return (
       <div className="cards-container grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
-        {estimates.map((est, index) => (
-          <div key={index} className="flip-card">
-            <div className={`flip-card-inner ${flipped[index] ? 'is-flipped' : ''}`}>
-              <div className="flip-card-front">
-                <p className="title">FLIP CARD</p>
-                <p>Waiting to Reveal</p>
-              </div>
-              <div className="flip-card-back">
-                <p className="title">{est.estimate} hours</p>
-                <p>Submitted by: {est.submittedBy}</p>
-              </div>
-            </div>
-          </div>
-        ))}
+       {estimates.map((est, index) => (
+  <div key={index} className="flip-card">
+    <div className={`flip-card-inner ${flipped[index] ? 'is-flipped' : ''}`}>
+      <div className="flip-card-front">
+        <p className="title">{flipped[index] ? 'FLIPPED' : 'FLIP CARD'}</p>
+        <p>{flipped[index] ? 'Revealed' : 'Waiting to Reveal'}</p>
+      </div>
+      <div className="flip-card-back">
+        <p className="title">{est.estimate} hours</p>
+        <p>Submitted by: {est.submittedBy}</p>
+      </div>
+    </div>
+  </div>
+))}
+
       </div>
     );
   };
@@ -171,26 +226,36 @@ const Estimate = ({ user }) => {
 
       {/* Buttons Section */}
       <div className="buttons-section max-w-5xl w-full p-6 bg-white shadow-md rounded-lg mt-6">
-        <div className="flex justify-center space-x-6">
-          <button onClick={handleFlip} className="flex flex-col items-center">
-            <FontAwesomeIcon icon={faEye} size="2x" className="text-blue-500" />
-            <span className="text-sm mt-2">Reveal</span>
-          </button>
-          <button onClick={handleRestart} className="flex flex-col items-center">
-            <FontAwesomeIcon icon={faRedo} size="2x" className="text-green-500" />
-            <span className="text-sm mt-2">Restart</span>
-          </button>
-          <button onClick={handleDeleteRoom} className="flex flex-col items-center">
-            <FontAwesomeIcon icon={faTrash} size="2x" className="text-red-500" />
-            <span className="text-sm mt-2">Delete Room</span>
-          </button>
-          <CopyToClipboard text={customURL} onCopy={handleCopyRoomId}>
-            <button className="flex flex-col items-center">
-              <FontAwesomeIcon icon={faLink} size="2x" className="text-yellow-500" />
-              <span className="text-sm mt-2">Invite Link</span>
-            </button>
-          </CopyToClipboard>
-        </div>
+      <div className="flex justify-center space-x-6">
+      {isOwner && (
+  <>
+    <button onClick={handleFlip} className="flex flex-col items-center">
+      <FontAwesomeIcon icon={faEye} size="2x" className="text-blue-500" />
+      <span className="text-sm mt-2">Reveal</span>
+    </button>
+    <button onClick={handleRestart} className="flex flex-col items-center">
+      <FontAwesomeIcon icon={faRedo} size="2x" className="text-green-500" />
+      <span className="text-sm mt-2">Restart</span>
+    </button>
+    <button onClick={handleDeleteRoom} className="flex flex-col items-center">
+      <FontAwesomeIcon icon={faTrash} size="2x" className="text-red-500" />
+      <span className="text-sm mt-2">Delete Room</span>
+    </button>
+  </>
+)}
+
+  {!isOwner && (
+    <p className="text-red-500">Only the owner can perform these actions.</p>
+  )}
+
+  <CopyToClipboard text={customURL} onCopy={handleCopyRoomId}>
+    <button className="flex flex-col items-center">
+      <FontAwesomeIcon icon={faLink} size="2x" className="text-yellow-500" />
+      <span className="text-sm mt-2">Invite Link</span>
+    </button>
+  </CopyToClipboard>
+</div>
+
       </div>
 
       {/* Submit Estimate Section */}

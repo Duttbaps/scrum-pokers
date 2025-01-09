@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { auth } from '../firebase'; // Firebase auth import
 
 const CreateRoom = ({ setRoomId }) => {
@@ -13,11 +13,8 @@ const CreateRoom = ({ setRoomId }) => {
       const user = auth.currentUser;
       if (user) {
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid)); // Assuming you have user details in Firestore
-          if (userDoc.exists()) {
-            const { firstName, lastName } = userDoc.data();
-            setDisplayName(`${firstName} ${lastName}`);
-          }
+          // Assuming user details are stored in Firestore (users collection)
+          setDisplayName(user.displayName || 'Unknown User'); // Use Firebase Auth displayName or fallback
         } catch (error) {
           console.error('Error fetching user details:', error);
         }
@@ -31,22 +28,25 @@ const CreateRoom = ({ setRoomId }) => {
     if (!roomName) return;
 
     try {
+      // Create the room document with owner information
       const roomRef = await addDoc(collection(db, 'rooms'), {
         name: roomName,
+        ownerName: displayName, // Store the owner's display name
+        // You can add other room data here if necessary
       });
-      setRoomId(roomRef.id); // Pass the room ID to App for navigation
+      setRoomId(roomRef.id); // Pass the room ID to the parent component (App) for navigation
     } catch (error) {
       console.error('Error creating room:', error);
     }
   };
 
   return (
-    <div className="1">
+    <div className="create-room">
       <div className="mb-4">
         <h2 className="text-xl font-bold">Session Name</h2>
         <input
           type="text"
-          placeholder="i.e MIS"
+          placeholder="e.g., MIS"
           className="border rounded py-2 px-3 mb-2"
           value={roomName}
           onChange={(e) => setRoomName(e.target.value)}
@@ -59,7 +59,7 @@ const CreateRoom = ({ setRoomId }) => {
           placeholder="Display Name"
           className="border rounded py-2 px-3 mb-2" // Make the input look disabled
           value={displayName}
-          disabled // Disable the input
+          disabled // Disable the input field
         />
       </div>
       <button onClick={handleCreateRoom} className="button-23">
