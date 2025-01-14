@@ -14,11 +14,14 @@ const Invite = ({ setUserName }) => {
   useEffect(() => {
     const savedName = localStorage.getItem('displayName');
     if (savedName) {
-      setDisplayName(savedName); // Set the name if it's saved
-      setUserName(savedName); // Update the user name in the parent component
-      setTimeout(() => navigate(`/${roomId}`, { state: { displayName: savedName } }), 0);// Navigate to the room
+      setDisplayName(savedName);
+      setUserName(savedName);
+      if (!window.location.pathname.includes(roomId)) {
+        navigate(`/${roomId}`, { state: { displayName: savedName } });
+      }
     }
   }, [roomId, navigate, setUserName]);
+  
 
   const handleEnterRoom = async () => {
     if (displayName.trim()) {
