@@ -16,7 +16,7 @@ const Invite = ({ setUserName }) => {
     if (savedName) {
       setDisplayName(savedName); // Set the name if it's saved
       setUserName(savedName); // Update the user name in the parent component
-      navigate(`/${roomId}`); // Navigate to the room
+      setTimeout(() => navigate(`/${roomId}`, { state: { displayName: savedName } }), 0);// Navigate to the room
     }
   }, [roomId, navigate, setUserName]);
 
